@@ -4,52 +4,35 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NoMoreType — Stop Typing. Start Transcribing.</title>
-  <meta name="description" content="NoMoreType is a free, open-source, cross-platform transcription app powered by Groq Whisper. Transcribe audio files, record your microphone, download YouTube subtitles, and polish transcripts with AI." />
+  <meta name="description" content="NoMoreType is a free, open-source, cross-platform transcription app powered by Groq Whisper. Transcribe files, mic, YouTube, polish & translate with AI." />
   <meta name="theme-color" content="#0e0e0e" />
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
-  <link rel="apple-touch-icon" href="assets/icon-192.png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- ═══ Navigation ═══ -->
   <nav class="navbar">
     <div class="nav-inner">
-      <a href="#" class="nav-logo">
-        <span class="nav-logo-icon">🎤</span>
-        <span class="nav-logo-text">NoMoreType</span>
-      </a>
+      <a href="#" class="nav-logo"><span class="nav-logo-icon">🎤</span><span class="nav-logo-text">NoMoreType</span></a>
       <div class="nav-links">
         <a href="#features">Features</a>
+        <a href="#shortcuts">Shortcuts</a>
         <a href="#docs">Docs</a>
         <a href="#download">Download</a>
         <a href="https://github.com/rumbis/nomoretype" target="_blank" class="nav-gh">GitHub</a>
       </div>
-      <button class="nav-mobile-btn" id="mobileMenuBtn" aria-label="Menu">☰</button>
     </div>
   </nav>
 
-  <!-- ═══ Hero ═══ -->
   <section class="hero">
     <div class="hero-bg"></div>
     <div class="hero-content">
       <div class="hero-badge">✨ Open Source · Cross-Platform · Free</div>
-      <h1 class="hero-title">
-        Stop <span class="strike">Typing</span>.<br />
-        Start <span class="gold">Transcribing</span>.
-      </h1>
-      <p class="hero-sub">
-        NoMoreType turns speech into text instantly. Upload audio, record your mic,
-        grab YouTube subtitles, or polish transcripts with AI — all from one beautiful
-        desktop &amp; mobile app.
-      </p>
+      <h1 class="hero-title">Stop <span class="strike">Typing</span>.<br />Start <span class="gold">Transcribing</span>.</h1>
+      <p class="hero-sub">NoMoreType turns speech into text instantly. Upload audio, record your mic, grab YouTube subtitles, or polish transcripts with AI — from one beautiful desktop &amp; mobile app.</p>
       <div class="hero-cta">
-        <a href="#download" class="btn btn-primary btn-lg">
-          <span class="btn-icon">⬇</span> Download Now
-        </a>
-        <a href="#features" class="btn btn-secondary btn-lg">
-          <span class="btn-icon">→</span> See Features
-        </a>
+        <a href="#download" class="btn btn-primary btn-lg"><span class="btn-icon">⬇</span> Download</a>
+        <a href="#features" class="btn btn-secondary btn-lg"><span class="btn-icon">→</span> Features</a>
       </div>
       <div class="hero-platforms">
         <span class="platform-chip">🖥️ macOS</span>
@@ -57,369 +40,203 @@
         <span class="platform-chip">🐧 Linux</span>
         <span class="platform-chip">🤖 Android</span>
         <span class="platform-chip">🍎 iOS</span>
-        <span class="platform-chip">🌐 Web / PWA</span>
+        <span class="platform-chip">🌐 PWA</span>
       </div>
     </div>
   </section>
 
-  <!-- ═══ Features ═══ -->
   <section class="section" id="features">
     <div class="section-header">
       <span class="section-tag">Features</span>
       <h2>Everything you need to go from<br /><span class="gold">speech to text</span></h2>
-      <p class="section-desc">
-        Powered by Groq Whisper API for the fastest, most accurate transcriptions.
-      </p>
     </div>
-
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon">📁</div>
         <h3>File Transcription</h3>
-        <p>Upload MP3, M4A, WAV, FLAC, OGG, MP4, WebM and get accurate transcripts in seconds. Supports large files with chunked upload.</p>
-        <div class="feature-tags">
-          <span>Groq Whisper</span>
-          <span>15+ Languages</span>
-          <span>Text / SRT / JSON</span>
-        </div>
+        <p>Upload MP3, M4A, WAV, FLAC, OGG, MP4, WebM. Output as plain text, SRT subtitles, or JSON segments with timestamps.</p>
+        <div class="feature-tags"><span>Groq Whisper</span><span>15+ Languages</span><span>Text/SRT/JSON</span></div>
       </div>
-
       <div class="feature-card">
         <div class="feature-icon">🎙️</div>
-        <h3>Microphone Recording</h3>
-        <p>Record directly from your microphone, transcribe instantly, and copy the result. Visual level meter and timer included.</p>
-        <div class="feature-tags">
-          <span>Real-time</span>
-          <span>Level Meter</span>
-          <span>Auto-detect</span>
-        </div>
+        <h3>Mic Recording + Auto-Insert</h3>
+        <p>Record from your microphone, transcribe instantly, and auto-insert at cursor in any app via global hotkey.</p>
+        <div class="feature-tags"><span>Real-time</span><span>Level Meter</span><span>Auto-insert</span></div>
       </div>
-
       <div class="feature-card">
         <div class="feature-icon">▶️</div>
         <h3>YouTube Subtitles</h3>
-        <p>Download subtitles directly from any YouTube video, or download the audio and transcribe it through Groq Whisper.</p>
-        <div class="feature-tags">
-          <span>yt-dlp</span>
-          <span>Multi-language</span>
-          <span>SRT Format</span>
-        </div>
+        <p>Download subtitles directly or transcribe audio through Groq. Supports multi-language and SRT export.</p>
+        <div class="feature-tags"><span>yt-dlp</span><span>Multi-lang</span><span>SRT</span></div>
       </div>
-
       <div class="feature-card">
         <div class="feature-icon">✨</div>
-        <h3>Polish &amp; Translate</h3>
-        <p>Fix grammar, add punctuation, translate to any language, or summarize your transcripts using any OpenAI-compatible LLM.</p>
-        <div class="feature-tags">
-          <span>Groq / OpenAI</span>
-          <span>10+ Languages</span>
-          <span>Summarize</span>
-        </div>
+        <h3>Polish & Translate</h3>
+        <p>Fix grammar, add punctuation, translate to any language, or summarize using any OpenAI-compatible LLM.</p>
+        <div class="feature-tags"><span>Groq/OpenAI</span><span>10+ Languages</span><span>Summarize</span></div>
       </div>
-
       <div class="feature-card">
-        <div class="feature-icon">📜</div>
-        <h3>History &amp; Export</h3>
-        <p>All your transcriptions are saved locally with timestamps. Search, view details, copy, or export as JSON.</p>
-        <div class="feature-tags">
-          <span>localStorage</span>
-          <span>JSON Export</span>
-          <span>500 items</span>
-        </div>
+        <div class="feature-icon">⌨️</div>
+        <h3>Global Hotkey</h3>
+        <p>Double-tap Left Control from any app → record mic. Single-tap → stop, transcribe, auto-insert at cursor. Fallback: ⌘⇧R / F6.</p>
+        <div class="feature-tags"><span>CGEventTap</span><span>Auto-insert</span><span>Accessibility</span></div>
       </div>
-
       <div class="feature-card">
         <div class="feature-icon">🌍</div>
         <h3>Cross-Platform</h3>
-        <p>Works on every major platform. Same codebase, same features, same beautiful dark theme everywhere.</p>
-        <div class="feature-tags">
-          <span>Electron</span>
-          <span>Capacitor</span>
-          <span>PWA</span>
-        </div>
+        <p>One codebase, every platform. Same features, same dark theme, on macOS, Windows, Linux, Android, iOS, and Web.</p>
+        <div class="feature-tags"><span>Electron</span><span>Capacitor</span><span>PWA</span></div>
       </div>
     </div>
   </section>
 
-  <!-- ═══ Architecture ═══ -->
-  <section class="section section-dark" id="arch">
+  <section class="section section-dark" id="shortcuts">
     <div class="section-header">
-      <span class="section-tag">Architecture</span>
-      <h2>One codebase.<br />Every <span class="gold">platform</span>.</h2>
-      <p class="section-desc">
-        Shared web core + platform-specific wrappers.
-      </p>
+      <span class="section-tag">Shortcuts</span>
+      <h2>Work <span class="gold">faster</span> with keyboard shortcuts</h2>
     </div>
-    <div class="arch-diagram">
-      <div class="arch-layer arch-core">
-        <div class="arch-label">🌐 Shared Core</div>
-        <div class="arch-items">
-          <span>UI (HTML/CSS/JS)</span>
-          <span>Groq API Client</span>
-          <span>LLM Service</span>
-          <span>History Storage</span>
-          <span>Recorder</span>
-        </div>
-      </div>
-      <div class="arch-arrow">⬇</div>
-      <div class="arch-wrappers">
-        <div class="arch-layer arch-elec">
-          <div class="arch-label">🖥️ Electron</div>
-          <div class="arch-items">
-            <span>Native Dialogs</span>
-            <span>yt-dlp</span>
-            <span>File System</span>
-          </div>
-          <div class="arch-plats">macOS · Windows · Linux</div>
-        </div>
-        <div class="arch-layer arch-cap">
-          <div class="arch-label">📱 Capacitor</div>
-          <div class="arch-items">
-            <span>Filesystem</span>
-            <span>Share Sheet</span>
-            <span>Status Bar</span>
-          </div>
-          <div class="arch-plats">Android · iOS</div>
-        </div>
-        <div class="arch-layer arch-pwa">
-          <div class="arch-label">🌐 PWA</div>
-          <div class="arch-items">
-            <span>Service Worker</span>
-            <span>Install Prompt</span>
-            <span>Offline Cache</span>
-          </div>
-          <div class="arch-plats">Any Browser</div>
-        </div>
-      </div>
+    <div class="shortcuts-grid">
+      <div class="sc-card"><kbd>⌃</kbd><kbd>⌃</kbd><span>Double-tap Left Control</span><small>Open app + start recording (global)</small></div>
+      <div class="sc-card"><kbd>⌃</kbd><span>Single-tap Left Control</span><small>Stop &amp; auto-insert at cursor (global)</small></div>
+      <div class="sc-card"><kbd>⌘⇧R</kbd><span>Toggle recording</span><small>Fallback global hotkey</small></div>
+      <div class="sc-card"><kbd>F6</kbd><span>Toggle recording</span><small>Fallback global hotkey</small></div>
+      <div class="sc-card"><kbd>⌘1-6</kbd><span>Switch tabs</span><small>In-app navigation</small></div>
+      <div class="sc-card"><kbd>Esc</kbd><span>Close modal</span><small>In-app</small></div>
     </div>
+    <p class="shortcuts-footnote">Double Left Control requires Accessibility permission. Grant it at System Settings → Privacy → Accessibility.</p>
   </section>
 
-  <!-- ═══ Docs ═══ -->
   <section class="section" id="docs">
     <div class="section-header">
-      <span class="section-tag">Documentation</span>
-      <h2>Simple, <span class="gold">powerful</span>.<br />Here's how it works.</h2>
+      <span class="section-tag">Docs</span>
+      <h2>Get started in <span class="gold">30 seconds</span></h2>
     </div>
-
     <div class="docs-grid">
-      <div class="doc-card">
-        <div class="doc-number">01</div>
-        <h3>Get an API Key</h3>
-        <p>Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a> → API Keys → Create a new key (starts with <code>gsk_</code>). It's free and takes 30 seconds.</p>
-      </div>
-      <div class="doc-card">
-        <div class="doc-number">02</div>
-        <h3>Launch the App</h3>
-        <p>Open NoMoreType on your platform. Go to <strong>Settings → Groq API Key</strong>, paste your key, and click <strong>Validate</strong>.</p>
-      </div>
-      <div class="doc-card">
-        <div class="doc-number">03</div>
-        <h3>Transcribe a File</h3>
-        <p>Go to <strong>File Transcribe</strong>, select any audio/video file, choose your language and output format, click <strong>Transcribe</strong>.</p>
-      </div>
-      <div class="doc-card">
-        <div class="doc-number">04</div>
-        <h3>Or Record Your Mic</h3>
-        <p>Go to <strong>Mic Transcribe</strong>, click <strong>Start Recording</strong>, speak, click stop. Your transcript appears instantly.</p>
-      </div>
-      <div class="doc-card">
-        <div class="doc-number">05</div>
-        <h3>YouTube &amp; Polish</h3>
-        <p>Paste a YouTube URL to download subtitles. Use the <strong>Polish & Translate</strong> tab to fix grammar or translate.</p>
-      </div>
-      <div class="doc-card">
-        <div class="doc-number">06</div>
-        <h3>Save &amp; Share</h3>
-        <p>Copy to clipboard or save as a file. All transcriptions are automatically saved in <strong>History</strong> for later review.</p>
-      </div>
+      <div class="doc-card"><div class="doc-number">01</div><h3>Get a Groq API Key</h3><p>Go to <a href="https://console.groq.com">console.groq.com</a> → API Keys → Create key (starts with <code>gsk_</code>). Free tier included.</p></div>
+      <div class="doc-card"><div class="doc-number">02</div><h3>Launch NoMoreType</h3><p>Open the app → <strong>Settings</strong> → paste your Groq key → click <strong>Validate</strong>.</p></div>
+      <div class="doc-card"><div class="doc-number">03</div><h3>Transcribe a File</h3><p>Go to <strong>File Transcribe</strong> → select audio/video → choose language &amp; output → click <strong>Transcribe</strong>.</p></div>
+      <div class="doc-card"><div class="doc-number">04</div><h3>Or Record Your Mic</h3><p>Go to <strong>Mic Transcribe</strong> → click record → speak → click stop. Result appears instantly.</p></div>
+      <div class="doc-card"><div class="doc-number">05</div><h3>Use the Global Hotkey</h3><p><strong>Double-tap Left Control</strong> anywhere → record → <strong>Single-tap</strong> → text auto-inserts at cursor.</p></div>
+      <div class="doc-card"><div class="doc-number">06</div><h3>Polish &amp; Export</h3><p>Use the <strong>Polish</strong> tab to fix grammar or translate. All transcripts save automatically in <strong>History</strong>.</p></div>
     </div>
-
     <div class="docs-advanced">
-      <h3>🔧 Advanced: Build from Source</h3>
+      <h3>🔧 Build from Source</h3>
       <div class="code-block">
-        <div class="code-header">
-          <span>macOS / Linux / Windows</span>
-          <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
-        </div>
-        <pre><code># Clone the repository
-git clone https://github.com/rumbis/nomoretype.git
+        <div class="code-header"><span>macOS / Linux / Windows</span><button class="copy-btn" onclick="copyCode(this)">📋 Copy</button></div>
+        <pre><code>git clone https://github.com/rumbis/nomoretype.git
 cd nomoretype
 
-# Desktop app (Electron)
+# Desktop
 cd electron-app && npm install && npm start
 
-# Mobile app (Capacitor)
+# Build installers
+npm run build:mac    # DMG
+npm run build:win    # NSIS
+npm run build:linux  # AppImage/DEB
+
+# Mobile
 cd capacitor-app && npm install && npx cap sync
-
-# Web app (serve locally)
-cd web-app && python3 -m http.server 8080</code></pre>
-      </div>
-
-      <h3>🔧 Build for Distribution</h3>
-      <div class="code-block">
-        <div class="code-header">
-          <span>Package installers</span>
-          <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
-        </div>
-        <pre><code>cd electron-app
-npm run build:mac     # DMG + ZIP (macOS)
-npm run build:win     # NSIS + portable (Windows)
-npm run build:linux   # AppImage + DEB (Linux)
-npm run build:all     # All platforms</code></pre>
+npx cap open android  # Android Studio
+npx cap open ios      # Xcode</code></pre>
       </div>
     </div>
   </section>
 
-  <!-- ═══ Download ═══ -->
   <section class="section section-dark" id="download">
     <div class="section-header">
       <span class="section-tag">Download</span>
       <h2>Get <span class="gold">NoMoreType</span> today</h2>
-      <p class="section-desc">
-        Free and open source. Pick your platform.
-      </p>
+      <p class="section-desc">Free and open source. Pick your platform.</p>
     </div>
-
     <div class="download-grid">
       <div class="download-card">
-        <div class="download-os-icon">🖥️</div>
-        <h3>macOS</h3>
+        <div class="download-os-icon">🖥️</div><h3>macOS</h3>
         <p class="download-desc">Apple Silicon &amp; Intel</p>
         <div class="download-btns">
-          <a href="#" class="btn btn-primary" onclick="showComingSoon(event)">⬇ DMG (ARM64)</a>
-          <a href="#" class="btn btn-secondary" onclick="showComingSoon(event)">⬇ DMG (x64)</a>
+          <a href="#" class="btn btn-primary" onclick="comingSoon(event)">⬇ DMG (ARM64)</a>
+          <a href="#" class="btn btn-secondary" onclick="comingSoon(event)">⬇ DMG (x64)</a>
         </div>
-        <div class="download-meta">macOS 14+ required</div>
       </div>
-
       <div class="download-card">
-        <div class="download-os-icon">🪟</div>
-        <h3>Windows</h3>
+        <div class="download-os-icon">🪟</div><h3>Windows</h3>
         <p class="download-desc">Windows 10 / 11</p>
         <div class="download-btns">
-          <a href="#" class="btn btn-primary" onclick="showComingSoon(event)">⬇ Installer (EXE)</a>
-          <a href="#" class="btn btn-secondary" onclick="showComingSoon(event)">⬇ Portable (EXE)</a>
+          <a href="#" class="btn btn-primary" onclick="comingSoon(event)">⬇ Installer (EXE)</a>
+          <a href="#" class="btn btn-secondary" onclick="comingSoon(event)">⬇ Portable</a>
         </div>
-        <div class="download-meta">Windows 10+ required</div>
       </div>
-
       <div class="download-card">
-        <div class="download-os-icon">🐧</div>
-        <h3>Linux</h3>
+        <div class="download-os-icon">🐧</div><h3>Linux</h3>
         <p class="download-desc">All distributions</p>
         <div class="download-btns">
-          <a href="#" class="btn btn-primary" onclick="showComingSoon(event)">⬇ AppImage</a>
-          <a href="#" class="btn btn-secondary" onclick="showComingSoon(event)">⬇ DEB Package</a>
+          <a href="#" class="btn btn-primary" onclick="comingSoon(event)">⬇ AppImage</a>
+          <a href="#" class="btn btn-secondary" onclick="comingSoon(event)">⬇ DEB</a>
         </div>
-        <div class="download-meta">Or use: <code>npm start</code></div>
       </div>
-
       <div class="download-card">
-        <div class="download-os-icon">🤖</div>
-        <h3>Android</h3>
-        <p class="download-desc">APK Download</p>
+        <div class="download-os-icon">🤖</div><h3>Android</h3>
+        <p class="download-desc">APK</p>
         <div class="download-btns">
-          <a href="#" class="btn btn-primary" onclick="showComingSoon(event)">⬇ APK (ARM64)</a>
+          <a href="#" class="btn btn-primary" onclick="comingSoon(event)">⬇ APK (ARM64)</a>
         </div>
-        <div class="download-meta">Android 8+ required</div>
       </div>
-
       <div class="download-card">
-        <div class="download-os-icon">🍎</div>
-        <h3>iOS</h3>
+        <div class="download-os-icon">🍎</div><h3>iOS</h3>
         <p class="download-desc">iPhone &amp; iPad</p>
         <div class="download-btns">
-          <a href="#" class="btn btn-primary" onclick="showComingSoon(event)">⬇ IPA</a>
+          <a href="#" class="btn btn-primary" onclick="comingSoon(event)">⬇ IPA</a>
         </div>
-        <div class="download-meta">Requires Xcode build or TestFlight</div>
       </div>
-
       <div class="download-card">
-        <div class="download-os-icon">🌐</div>
-        <h3>Web / PWA</h3>
+        <div class="download-os-icon">🌐</div><h3>Web / PWA</h3>
         <p class="download-desc">Any browser</p>
         <div class="download-btns">
-          <a href="https://nomoretype.app" class="btn btn-primary">🌐 Open Web App</a>
-          <button class="btn btn-secondary" onclick="showComingSoon(event)">📲 Install PWA</button>
+          <a href="#" class="btn btn-primary" onclick="comingSoon(event)">🌐 Open Web App</a>
         </div>
-        <div class="download-meta">Chrome, Safari, Firefox, Edge</div>
       </div>
     </div>
-
     <div class="download-note">
-      <p>📦 All builds are <strong>signed</strong> and <strong>notarized</strong> where applicable. </p>
-      <p>🔗 Source code: <a href="https://github.com/rumbis/nomoretype" target="_blank">github.com/rumbis/nomoretype</a></p>
-      <p>📄 License: <strong>MIT</strong> — free for personal and commercial use.</p>
+      <p>📦 All builds are signed and notarized where applicable.</p>
+      <p>🔗 Source code: <a href="https://github.com/rumbis/nomoretype">github.com/rumbis/nomoretype</a></p>
+      <p>📄 <strong>MIT License</strong> — free for personal and commercial use.</p>
     </div>
   </section>
 
-  <!-- ═══ Footer ═══ -->
   <footer class="footer">
     <div class="footer-inner">
       <div class="footer-brand">
         <span class="footer-logo">🎤 NoMoreType</span>
-        <p class="footer-desc">Built by <a href="https://codeitlab.com" target="_blank">CodeitLab</a> with ❤️ and open source.</p>
+        <p class="footer-desc">Built by <a href="https://codeitlab.com">CodeitLab</a> with ❤️ and open source.</p>
       </div>
       <div class="footer-links">
-        <a href="https://github.com/rumbis/nomoretype" target="_blank">GitHub</a>
-        <a href="#docs">Documentation</a>
+        <a href="https://github.com/rumbis/nomoretype">GitHub</a>
+        <a href="#docs">Docs</a>
         <a href="#download">Download</a>
       </div>
     </div>
-    <div class="footer-bottom">
-      <p>© 2026 CodeitLab. MIT License.</p>
-    </div>
+    <div class="footer-bottom"><p>© 2026 CodeitLab. MIT License.</p></div>
   </footer>
 
-  <!-- Toast notification -->
   <div id="toast" class="toast" style="display:none"></div>
 
   <script>
-    // ─── Mobile menu ─────────────────────────────────────────
-    document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
-      document.querySelector('.nav-links').classList.toggle('open');
-    });
-
-    // ─── Smooth scroll ───────────────────────────────────────
     document.querySelectorAll('a[href^="#"]').forEach(a => {
       a.addEventListener('click', e => {
         const el = document.querySelector(a.getAttribute('href'));
-        if (el) {
-          e.preventDefault();
-          el.scrollIntoView({ behavior: 'smooth' });
-          document.querySelector('.nav-links')?.classList.remove('open');
-        }
+        if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); }
       });
     });
-
-    // ─── Coming soon toast ───────────────────────────────────
-    function showComingSoon(e) {
-      e.preventDefault();
-      showToast('🚧 Builds coming soon! Build from source or check GitHub.', 'warning');
+    function comingSoon(e) { e.preventDefault(); showToast('🚧 Builds coming soon! Build from source or check GitHub releases.', 'warning'); }
+    function showToast(msg, type, d) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.className = 'toast ' + type; t.style.display = 'block';
+      clearTimeout(t._t); t._t = setTimeout(() => { t.style.display = 'none'; }, d || 4000);
     }
-
-    function showToast(msg, type = 'success', duration = 4000) {
-      const toast = document.getElementById('toast');
-      toast.textContent = msg;
-      toast.className = `toast ${type}`;
-      toast.style.display = 'block';
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => { toast.style.display = 'none'; }, duration);
-    }
-
-    // ─── Copy code ───────────────────────────────────────────
     function copyCode(btn) {
       const pre = btn.closest('.code-block').querySelector('code');
-      navigator.clipboard.writeText(pre.textContent).then(() => {
-        btn.textContent = '✅ Copied!';
-        setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
-      });
+      navigator.clipboard.writeText(pre.textContent).then(() => { btn.textContent = '✅ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000); });
     }
-
-    // ─── Scroll nav effect ───────────────────────────────────
-    window.addEventListener('scroll', () => {
-      document.querySelector('.navbar').classList.toggle('scrolled', window.scrollY > 50);
-    });
+    window.addEventListener('scroll', () => { document.querySelector('.navbar').classList.toggle('scrolled', window.scrollY > 50); });
   </script>
 </body>
 </html>
