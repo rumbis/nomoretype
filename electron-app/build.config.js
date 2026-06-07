@@ -17,6 +17,10 @@ module.exports = {
       to: 'web-app',
       filter: ['**/*'],
     },
+    {
+      from: 'hotkey-helper/hotkey-helper',
+      to: 'hotkey-helper',
+    },
   ],
   mac: {
     category: 'public.app-category.productivity',

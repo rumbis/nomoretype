@@ -30,4 +30,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   registerCustomShortcut: (shortcut) => ipcRenderer.invoke('shortcut:register', shortcut),
   unregisterAllShortcuts: () => ipcRenderer.invoke('shortcut:unregisterAll'),
+  setRecordingState: (state) => ipcRenderer.invoke('recording:state', state),
+  restartHelper: () => ipcRenderer.invoke('helper:restart'),
 });

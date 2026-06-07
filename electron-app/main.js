@@ -1,9 +1,194 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut } = require('electron');
 const path = require('path');
-const { execFile, exec } = require('child_process');
+const { execFile, spawn, exec } = require('child_process');
 const fs = require('fs');
 
 let mainWindow = null;
+let hotkeyHelper = null;
+let isRecording = false;
+
+// ─── Hotkey Helper Path ────────────────────────────────────────────
+
+function getHelperPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'hotkey-helper');
+  }
+  return path.join(__dirname, 'hotkey-helper', 'hotkey-helper');
+}
+
+// ─── Start CGEventTap Hotkey Helper ────────────────────────────────
+
+function startHotkeyHelper() {
+  const helperPath = getHelperPath();
+
+  if (!fs.existsSync(helperPath)) {
+    console.warn('Hotkey helper not found at:', helperPath);
+    return;
+  }
+
+  // Kill any existing instance
+  if (hotkeyHelper) {
+    hotkeyHelper.kill();
+    hotkeyHelper = null;
+  }
+
+  try {
+    hotkeyHelper = spawn(helperPath, [], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let buffer = '';
+    hotkeyHelper.stdout.on('data', (data) => {
+      buffer += data.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const msg = JSON.parse(line);
+          handleHelperMessage(msg);
+        } catch {}
+      }
+    });
+
+    hotkeyHelper.stderr.on('data', (data) => {
+      console.warn('[hotkey-helper]', data.toString());
+    });
+
+    hotkeyHelper.on('exit', (code) => {
+      console.log(`[hotkey-helper] exited (${code}), restarting in 2s...`);
+      hotkeyHelper = null;
+      setTimeout(startHotkeyHelper, 2000);
+    });
+
+    console.log('[hotkey-helper] started');
+  } catch (err) {
+    console.error('[hotkey-helper] failed to start:', err.message);
+  }
+}
+
+function handleHelperMessage(msg) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  switch (msg.event) {
+    case 'double-tap':
+      // Show & focus the app
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.showInactive()
+      mainWindow.setVisibleOnAllWorkspaces(true);
+      mainWindow.focus();
+      mainWindow.setVisibleOnAllWorkspaces(false);
+      // Start recording
+      mainWindow.webContents.send('global:hotkey', 'start-recording');
+      break;
+
+    case 'single-tap':
+      // Toggle recording (stop if recording, start if not)
+      mainWindow.webContents.send('global:hotkey', 'toggle-recording');
+      break;
+
+    case 'started':
+      console.log('[hotkey-helper] CGEventTap running');
+      break;
+
+    case 'permission-granted':
+      console.log('[hotkey-helper] Accessibility permission granted');
+      break;
+
+    default:
+      if (msg.error) {
+        console.warn('[hotkey-helper]', msg.error);
+        // Notify renderer about accessibility requirement
+        mainWindow.webContents.send('global:hotkey', 'accessibility-required');
+      }
+  }
+}
+
+// ─── Fallback GlobalShortcuts (when CGEventTap unavailable) ────────
+
+function registerFallbackShortcuts() {
+  globalShortcut.unregisterAll();
+
+  const fallbacks = ['CommandOrControl+Shift+R', 'F6'];
+  for (const shortcut of fallbacks) {
+    try {
+      globalShortcut.register(shortcut, () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('global:hotkey', 'toggle-recording');
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.focus();
+        }
+      });
+    } catch {}
+  }
+}
+
+// ─── IPC: Renderer tells main about recording state ────────────────
+
+ipcMain.handle('recording:state', (_, state) => {
+  isRecording = state === 'recording';
+});
+
+// ─── IPC: Custom shortcuts ──────────────────────────────────────────
+
+let registeredCustom = null;
+
+ipcMain.handle('shortcut:register', (_, shortcut) => {
+  if (registeredCustom) {
+    try { globalShortcut.unregister(registeredCustom); } catch {}
+  }
+  registeredCustom = null;
+  if (shortcut) {
+    try {
+      globalShortcut.register(shortcut, () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('global:hotkey', 'toggle-recording');
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.focus();
+        }
+      });
+      registeredCustom = shortcut;
+      return true;
+    } catch { return false; }
+  }
+  return true;
+});
+
+ipcMain.handle('shortcut:unregisterAll', () => {
+  globalShortcut.unregisterAll();
+  registerFallbackShortcuts();
+  registeredCustom = null;
+  return true;
+});
+
+ipcMain.handle('helper:restart', () => {
+  startHotkeyHelper();
+  return true;
+});
+
+// ─── App Lifecycle ──────────────────────────────────────────────────
+
+app.whenReady().then(() => {
+  createWindow();
+  startHotkeyHelper();
+  registerFallbackShortcuts();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+  if (hotkeyHelper) { hotkeyHelper.kill(); hotkeyHelper = null; }
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// ─── Create Window ──────────────────────────────────────────────────
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -28,155 +213,48 @@ function createWindow() {
   );
 }
 
-// ─── Global Hotkeys ─────────────────────────────────────────────────
-
-function registerGlobalShortcuts() {
-  globalShortcut.unregisterAll();
-
-  // Toggle mic recording: CmdOrCtrl+Shift+R or F6
-  const shortcuts = ['CommandOrControl+Shift+R', 'F6'];
-  for (const shortcut of shortcuts) {
-    try {
-      globalShortcut.register(shortcut, () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('global:hotkey', 'toggle-recording');
-          // Show the window if minimized/hidden
-          if (mainWindow.isMinimized()) mainWindow.restore();
-          mainWindow.focus();
-        }
-      });
-    } catch (e) {
-      console.warn(`Failed to register ${shortcut}:`, e.message);
-    }
-  }
-}
-
-// Also register from settings IPC
-let registeredCustom = null;
-
-ipcMain.handle('shortcut:register', (_, shortcut) => {
-  // Unregister old custom shortcut
-  if (registeredCustom) {
-    try { globalShortcut.unregister(registeredCustom); } catch {}
-  }
-  registeredCustom = null;
-
-  if (shortcut) {
-    try {
-      globalShortcut.register(shortcut, () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('global:hotkey', 'toggle-recording');
-          if (mainWindow.isMinimized()) mainWindow.restore();
-          mainWindow.focus();
-        }
-      });
-      registeredCustom = shortcut;
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  return true;
-});
-
-ipcMain.handle('shortcut:unregisterAll', () => {
-  globalShortcut.unregisterAll();
-  registerGlobalShortcuts(); // re-register defaults
-  registeredCustom = null;
-  return true;
-});
-
-// ─── App Lifecycle ──────────────────────────────────────────────────
-
-app.whenReady().then(() => {
-  createWindow();
-  registerGlobalShortcuts();
-});
-
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
-
 // ─── File Dialog ────────────────────────────────────────────────────
 
 ipcMain.handle('dialog:openFile', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
-    filters: [
-      {
-        name: 'Audio & Video',
-        extensions: ['mp3', 'm4a', 'wav', 'flac', 'ogg', 'mp4', 'webm', 'mov', 'aac', 'wma'],
-      },
-    ],
+    filters: [{ name: 'Audio & Video', extensions: ['mp3', 'm4a', 'wav', 'flac', 'ogg', 'mp4', 'webm', 'mov', 'aac', 'wma'] }],
   });
   if (result.canceled) return null;
-  const filePath = result.filePaths[0];
-  const stats = fs.statSync(filePath);
-  return {
-    path: filePath,
-    name: path.basename(filePath),
-    size: stats.size,
-    ext: path.extname(filePath).toLowerCase().replace('.', ''),
-  };
+  const fp = result.filePaths[0];
+  const stat = fs.statSync(fp);
+  return { path: fp, name: path.basename(fp), size: stat.size, ext: path.extname(fp).toLowerCase().replace('.', '') };
 });
-
-// ─── Read File (chunked) ────────────────────────────────────────────
 
 ipcMain.handle('file:readChunk', async (_, filePath, offset, length) => {
   const fd = fs.openSync(filePath, 'r');
-  const buffer = Buffer.alloc(length);
-  const bytesRead = fs.readSync(fd, buffer, 0, length, offset);
+  const buf = Buffer.alloc(length);
+  const br = fs.readSync(fd, buf, 0, length, offset);
   fs.closeSync(fd);
-  return buffer.slice(0, bytesRead).toString('base64');
+  return buf.slice(0, br).toString('base64');
 });
 
-ipcMain.handle('file:getSize', async (_, filePath) => {
-  return fs.statSync(filePath).size;
-});
-
-// ─── Get yt-dlp path ────────────────────────────────────────────────
+ipcMain.handle('file:getSize', async (_, filePath) => fs.statSync(filePath).size);
 
 ipcMain.handle('yt-dlp:check', async () => {
   const candidates = ['/opt/homebrew/bin/yt-dlp', '/usr/local/bin/yt-dlp', 'yt-dlp'];
   for (const bin of candidates) {
     try {
-      await new Promise((resolve, reject) => {
-        execFile(bin, ['--version'], { timeout: 5000 }, (err, stdout) => {
-          err ? reject(err) : resolve(stdout.trim());
-        });
-      });
+      await new Promise((res, rej) => execFile(bin, ['--version'], { timeout: 5000 }, (e, o) => e ? rej(e) : res(o)));
       return bin;
-    } catch {
-      continue;
-    }
+    } catch {}
   }
   return null;
 });
 
 ipcMain.handle('yt-dlp:execute', async (_, ...args) => {
-  return new Promise((resolve, reject) => {
-    exec(args.join(' '), { timeout: 120000, maxBuffer: 50 * 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) return reject(stderr || err.message);
-      resolve(stdout);
-    });
+  return new Promise((res, rej) => {
+    exec(args.join(' '), { timeout: 120000, maxBuffer: 50 * 1024 * 1024 }, (e, o, er) => e ? rej(er || e.message) : res(o));
   });
 });
 
-// ─── Save file dialog ───────────────────────────────────────────────
-
 ipcMain.handle('dialog:saveFile', async (_, defaultName) => {
-  const result = await dialog.showSaveDialog(mainWindow, {
-    defaultPath: defaultName,
-    filters: [{ name: 'Text', extensions: ['txt', 'srt'] }],
-  });
+  const result = await dialog.showSaveDialog(mainWindow, { defaultPath: defaultName, filters: [{ name: 'Text', extensions: ['txt', 'srt'] }] });
   if (result.canceled) return null;
   return result.filePath;
 });
@@ -186,13 +264,7 @@ ipcMain.handle('fs:writeFile', async (_, filePath, content) => {
   return true;
 });
 
-// ─── Open in Finder/Explorer ────────────────────────────────────────
-
-ipcMain.handle('shell:showItem', async (_, filePath) => {
-  shell.showItemInFolder(filePath);
-});
-
-// ─── Platform info ──────────────────────────────────────────────────
+ipcMain.handle('shell:showItem', async (_, filePath) => shell.showItemInFolder(filePath));
 
 ipcMain.handle('app:platform', () => process.platform);
 ipcMain.handle('app:userDataPath', () => app.getPath('userData'));

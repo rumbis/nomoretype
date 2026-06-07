@@ -79,18 +79,45 @@ function initGlobalHotkeys() {
   // Register Electron global shortcut listener
   if (window.electronAPI?.onGlobalHotkey) {
     window.electronAPI.onGlobalHotkey((action) => {
-      if (action === 'toggle-recording') {
-        toggleMicRecording();
+      switch (action) {
+        case 'start-recording':
+          // Double right-ctrl: open app + start recording
+          switchTab('mic');
+          setTimeout(() => startMicRecording(), 300);
+          break;
+        case 'toggle-recording':
+          toggleMicRecording();
+          break;
+        case 'accessibility-required':
+          showToast('🔑 Grant Accessibility permission in System Settings → Privacy → Accessibility', 'warning', 6000);
+          break;
       }
     });
   }
 
-  // Media session support (web/mobile — e.g. keyboard media keys)
+  // Media session support (web/mobile)
   if ('mediaSession' in navigator) {
     try {
       navigator.mediaSession.setActionHandler('play', () => toggleMicRecording());
       navigator.mediaSession.setActionHandler('pause', () => toggleMicRecording());
     } catch {}
+  }
+}
+
+// ─── Start Mic Recording (called from hotkey) ──────────────────────
+
+function startMicRecording() {
+  const recordBtn = document.getElementById('micRecordBtn');
+  if (!recordBtn) {
+    switchTab('mic');
+    setTimeout(() => startMicRecording(), 300);
+    return;
+  }
+
+  // Only start if not already recording
+  const status = document.getElementById('micStatus');
+  if (status?.textContent !== 'Recording…') {
+    recordBtn.click();
   }
 }
 
@@ -100,17 +127,12 @@ function toggleMicRecording() {
   const recordBtn = document.getElementById('micRecordBtn');
   const micStatus = document.getElementById('micStatus');
   if (!recordBtn) {
-    // Switch to mic tab first
     switchTab('mic');
-    // Small delay for UI to render, then click
-    setTimeout(() => {
-      const btn = document.getElementById('micRecordBtn');
-      if (btn) btn.click();
-    }, 200);
+    setTimeout(() => toggleMicRecording(), 200);
     return;
   }
 
-  const isRecording = micStatus?.textContent === 'Recording…' || recordBtn.textContent.includes('Stop');
+  const isRecording = micStatus?.textContent === 'Recording…';
   if (isRecording) {
     recordBtn.click(); // stop
   } else {
@@ -344,12 +366,16 @@ function initMicTab() {
         recordBtn.style.background = '#ef4444';
         recordBtn.style.color = '#fff';
         resultSection.style.display = 'none';
+        // Notify main process
+        if (window.electronAPI?.setRecordingState) window.electronAPI.setRecordingState('recording');
       } catch (err) {
         showToast(err.message, 'error', 5000);
       }
     } else {
       recordBtn.disabled = true;
       btnText.textContent = 'Transcribing…';
+      // Notify main process
+      if (window.electronAPI?.setRecordingState) window.electronAPI.setRecordingState('idle');
       try {
         const blob = await recorder.stop();
         isRecording = false;
