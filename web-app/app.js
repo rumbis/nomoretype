@@ -7,6 +7,9 @@
 
 const $ = id => document.getElementById(id);
 
+// Flag: triggered by hotkey (double left-ctrl) vs manual button click
+let previousApp = false;
+
 // ─── Init ───────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -81,9 +84,16 @@ function initGlobalHotkeys() {
     window.electronAPI.onGlobalHotkey((action) => {
       switch (action) {
         case 'start-recording':
-          // Double right-ctrl: open app + start recording
+          // Double left-ctrl: open app + start recording
+          previousApp = true; // flag: came from hotkey
           switchTab('mic');
           setTimeout(() => startMicRecording(), 300);
+          break;
+        case 'stop-recording':
+          // Single left-ctrl while recording: stop, transcribe, auto-insert
+          if (window._micStop) {
+            window._micStop(true); // true = auto-insert mode
+          }
           break;
         case 'toggle-recording':
           toggleMicRecording();
@@ -107,36 +117,41 @@ function initGlobalHotkeys() {
 // ─── Start Mic Recording (called from hotkey) ──────────────────────
 
 function startMicRecording() {
-  const recordBtn = document.getElementById('micRecordBtn');
-  if (!recordBtn) {
-    switchTab('mic');
-    setTimeout(() => startMicRecording(), 300);
-    return;
-  }
-
-  // Only start if not already recording
-  const status = document.getElementById('micStatus');
-  if (status?.textContent !== 'Recording…') {
-    recordBtn.click();
-  }
+  if (window._micIsRecording?.()) return; // already recording
+  switchTab('mic');
+  setTimeout(() => {
+    if (window._micStart) {
+      window._micStart();
+    } else {
+      // Fallback: click the button
+      const btn = document.getElementById('micRecordBtn');
+      if (btn) btn.click();
+    }
+  }, 300);
 }
 
 // ─── Toggle Mic Recording (called from hotkey or media key) ────────
 
 function toggleMicRecording() {
-  const recordBtn = document.getElementById('micRecordBtn');
-  const micStatus = document.getElementById('micStatus');
-  if (!recordBtn) {
-    switchTab('mic');
-    setTimeout(() => toggleMicRecording(), 200);
-    return;
-  }
-
-  const isRecording = micStatus?.textContent === 'Recording…';
-  if (isRecording) {
-    recordBtn.click(); // stop
+  if (window._micIsRecording?.()) {
+    // Stop
+    if (window._micStop) {
+      window._micStop();
+    } else {
+      const btn = document.getElementById('micRecordBtn');
+      if (btn) btn.click();
+    }
   } else {
-    recordBtn.click(); // start
+    // Start
+    switchTab('mic');
+    setTimeout(() => {
+      if (window._micStart) {
+        window._micStart();
+      } else {
+        const btn = document.getElementById('micRecordBtn');
+        if (btn) btn.click();
+      }
+    }, 200);
   }
 }
 
@@ -353,70 +368,95 @@ function initMicTab() {
 
   recordBtn.addEventListener('click', async () => {
     if (!isRecording) {
-      try {
-        await recorder.start();
-        isRecording = true;
-        btnIcon.textContent = '⏹';
-        btnText.textContent = 'Stop Recording';
-        micIcon.className = 'mic-icon recording';
-        micStatus.textContent = 'Recording…';
-        micTimer.style.display = 'block';
-        micTimer.textContent = '00:00';
-        micLevel.style.display = 'block';
-        recordBtn.style.background = '#ef4444';
-        recordBtn.style.color = '#fff';
-        resultSection.style.display = 'none';
-        // Notify main process
-        if (window.electronAPI?.setRecordingState) window.electronAPI.setRecordingState('recording');
-      } catch (err) {
-        showToast(err.message, 'error', 5000);
-      }
+      await doStartRecording();
     } else {
-      recordBtn.disabled = true;
-      btnText.textContent = 'Transcribing…';
-      // Notify main process
-      if (window.electronAPI?.setRecordingState) window.electronAPI.setRecordingState('idle');
-      try {
-        const blob = await recorder.stop();
-        isRecording = false;
-        micIcon.className = 'mic-icon';
-        micStatus.textContent = 'Processing…';
-        recordBtn.style.background = '';
-        recordBtn.style.color = '';
-
-        if (!blob) { showToast('No audio recorded', 'warning'); resetMicUI(); return; }
-
-        progressSection.style.display = 'block';
-        progressFill.style.width = '50%';
-        progressText.textContent = 'Transcribing…';
-
-        const result = await window.groqService.transcribe(blob, {
-          language: language.value, model: model.value, responseFormat: 'text',
-        });
-
-        progressFill.style.width = '100%';
-        progressText.textContent = 'Done!';
-
-        resultText.textContent = result.text || '(empty transcription)';
-        resultSection.style.display = 'block';
-
-        if (getSavingHistory()) {
-          window.historyStorage.add({
-            type: 'mic', title: 'Microphone Recording',
-            text: result.text, model: model.value, language: language.value,
-            duration: Math.floor((Date.now() - recorder.startTime) / 1000),
-          });
-        }
-        showToast('Transcription complete!');
-      } catch (err) {
-        showToast(err.message, 'error', 5000);
-        recorder.cancel();
-      } finally {
-        resetMicUI();
-        progressSection.style.display = 'none';
-      }
+      await doStopRecording();
     }
   });
+
+  // Expose start/stop for hotkey use
+  window._micStart = doStartRecording;
+  window._micStop = doStopRecording;
+  window._micIsRecording = () => isRecording;
+
+  async function doStartRecording() {
+    if (isRecording) return;
+    try {
+      await recorder.start();
+      isRecording = true;
+      btnIcon.textContent = '⏹';
+      btnText.textContent = 'Stop Recording';
+      micIcon.className = 'mic-icon recording';
+      micStatus.textContent = 'Recording…';
+      micTimer.style.display = 'block';
+      micTimer.textContent = '00:00';
+      micLevel.style.display = 'block';
+      recordBtn.style.background = '#ef4444';
+      recordBtn.style.color = '#fff';
+      resultSection.style.display = 'none';
+      // Notify main process
+      if (window.electronAPI?.setRecordingState) window.electronAPI.setRecordingState('recording');
+    } catch (err) {
+      showToast(err.message, 'error', 5000);
+    }
+  }
+
+  async function doStopRecording(autoInsert = false) {
+    if (!isRecording) return;
+    recordBtn.disabled = true;
+    btnText.textContent = 'Transcribing…';
+    // Notify main process
+    if (window.electronAPI?.setRecordingState) window.electronAPI.setRecordingState('idle');
+    try {
+      const blob = await recorder.stop();
+      isRecording = false;
+      micIcon.className = 'mic-icon';
+      micStatus.textContent = 'Processing…';
+      recordBtn.style.background = '';
+      recordBtn.style.color = '';
+
+      if (!blob) { showToast('No audio recorded', 'warning'); resetMicUI(); return; }
+
+      progressSection.style.display = 'block';
+      progressFill.style.width = '50%';
+      progressText.textContent = 'Transcribing…';
+
+      const result = await window.groqService.transcribe(blob, {
+        language: language.value, model: model.value, responseFormat: 'text',
+      });
+
+      progressFill.style.width = '100%';
+      progressText.textContent = 'Done!';
+
+      resultText.textContent = result.text || '(empty transcription)';
+      resultSection.style.display = 'block';
+
+      if (getSavingHistory()) {
+        window.historyStorage.add({
+          type: 'mic', title: 'Microphone Recording',
+          text: result.text, model: model.value, language: language.value,
+          duration: Math.floor((Date.now() - recorder.startTime) / 1000),
+        });
+      }
+
+      if (autoInsert && result.text && window.electronAPI?.insertTranscription) {
+        // Auto-insert at cursor in previous app (main.js handles hiding)
+        await window.electronAPI.insertTranscription(result.text);
+      } else {
+        showToast('Transcription complete!');
+        // Show the result in the app
+        if (result.text && window.electronAPI?.showTranscription) {
+          window.electronAPI.showTranscription(result.text);
+        }
+      }
+    } catch (err) {
+      showToast(err.message, 'error', 5000);
+      recorder.cancel();
+    } finally {
+      resetMicUI();
+      progressSection.style.display = 'none';
+    }
+  }
 
   function resetMicUI() {
     isRecording = false;

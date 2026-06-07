@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut, clipboard } = require('electron');
 const path = require('path');
 const { execFile, spawn, exec } = require('child_process');
 const fs = require('fs');
@@ -6,114 +6,90 @@ const fs = require('fs');
 let mainWindow = null;
 let hotkeyHelper = null;
 let isRecording = false;
-
-// ─── Hotkey Helper Path ────────────────────────────────────────────
+let previousAppBundleId = null;
+let accessibilityOpened = false;
 
 function getHelperPath() {
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'hotkey-helper');
-  }
+  if (app.isPackaged) return path.join(process.resourcesPath, 'hotkey-helper');
   return path.join(__dirname, 'hotkey-helper', 'hotkey-helper');
 }
 
-// ─── Start CGEventTap Hotkey Helper ────────────────────────────────
+function getFrontmostApp() {
+  return new Promise(r => exec("osascript -e 'tell application \"System Events\" to get bundle identifier of first process whose frontmost is true'", {timeout:3000}, (e,o) => r(e ? null : o.trim())));
+}
+
+async function insertTextAtCursor(text) {
+  const target = previousAppBundleId;
+  if (!target) return;
+  const old = clipboard.readText();
+  try {
+    clipboard.writeText(text);
+    await new Promise(r => setTimeout(r, 100));
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+    await new Promise(r => exec(`osascript -e 'tell application id "${target}" to activate'`, {timeout:3000}, () => r()));
+    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => exec("osascript -e 'tell application \"System Events\" to keystroke \"v\" using command down'", {timeout:3000}, () => r()));
+    setTimeout(() => { try { clipboard.writeText(old); } catch {} }, 2000);
+  } catch(e) { console.warn('insertTextAtCursor error:', e.message); try { clipboard.writeText(old); } catch {} }
+}
 
 function startHotkeyHelper() {
-  const helperPath = getHelperPath();
-
-  if (!fs.existsSync(helperPath)) {
-    console.warn('Hotkey helper not found at:', helperPath);
-    return;
-  }
-
-  // Kill any existing instance
-  if (hotkeyHelper) {
-    hotkeyHelper.kill();
-    hotkeyHelper = null;
-  }
-
+  const p = getHelperPath();
+  if (!fs.existsSync(p)) return;
+  if (hotkeyHelper) { hotkeyHelper.kill(); hotkeyHelper = null; }
   try {
-    hotkeyHelper = spawn(helperPath, [], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let buffer = '';
-    hotkeyHelper.stdout.on('data', (data) => {
-      buffer += data.toString();
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const msg = JSON.parse(line);
-          handleHelperMessage(msg);
-        } catch {}
+    hotkeyHelper = spawn(p, [], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let buf = '';
+    hotkeyHelper.stdout.on('data', d => {
+      buf += d.toString();
+      let i; while ((i = buf.indexOf('\n')) !== -1) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line) continue;
+        try { handleMsg(JSON.parse(line)); } catch(e) { console.warn('[hotkey-helper] parse error:', e.message); }
       }
     });
-
-    hotkeyHelper.stderr.on('data', (data) => {
-      console.warn('[hotkey-helper]', data.toString());
-    });
-
-    hotkeyHelper.on('exit', (code) => {
-      console.log(`[hotkey-helper] exited (${code}), restarting in 2s...`);
-      hotkeyHelper = null;
-      setTimeout(startHotkeyHelper, 2000);
-    });
-
+    hotkeyHelper.stderr.on('data', d => console.warn('[hotkey-helper]', d.toString()));
+    hotkeyHelper.on('exit', c => { console.log(`[hotkey-helper] exited ${c}`); hotkeyHelper = null; setTimeout(startHotkeyHelper, 2000); });
     console.log('[hotkey-helper] started');
-  } catch (err) {
-    console.error('[hotkey-helper] failed to start:', err.message);
-  }
+  } catch(e) { console.error('[hotkey-helper] failed:', e.message); }
 }
 
-function handleHelperMessage(msg) {
+async function handleMsg(msg) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-
   switch (msg.event) {
     case 'double-tap':
-      // Show & focus the app
+      previousAppBundleId = await getFrontmostApp();
+      console.log('[hotkey] Prev app:', previousAppBundleId);
       if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.showInactive()
-      mainWindow.setVisibleOnAllWorkspaces(true);
-      mainWindow.focus();
-      mainWindow.setVisibleOnAllWorkspaces(false);
-      // Start recording
+      mainWindow.show(); mainWindow.focus();
       mainWindow.webContents.send('global:hotkey', 'start-recording');
       break;
-
     case 'single-tap':
-      // Toggle recording (stop if recording, start if not)
-      mainWindow.webContents.send('global:hotkey', 'toggle-recording');
+      if (isRecording) mainWindow.webContents.send('global:hotkey', 'stop-recording');
       break;
-
-    case 'started':
-      console.log('[hotkey-helper] CGEventTap running');
-      break;
-
-    case 'permission-granted':
-      console.log('[hotkey-helper] Accessibility permission granted');
-      break;
-
+    case 'started': console.log('[hotkey-helper] running'); break;
+    case 'permission-granted': console.log('[hotkey-helper] permission granted'); break;
     default:
+      console.log('[hotkey-helper] event:', JSON.stringify(msg));
       if (msg.error) {
-        console.warn('[hotkey-helper]', msg.error);
-        // Notify renderer about accessibility requirement
         mainWindow.webContents.send('global:hotkey', 'accessibility-required');
+        if (!accessibilityOpened) {
+          accessibilityOpened = true;
+          exec("open 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'");
+          setTimeout(() => {
+            if (hotkeyHelper) { hotkeyHelper.kill(); hotkeyHelper = null; }
+            startHotkeyHelper();
+          }, 10000);
+        }
       }
   }
 }
-
-// ─── Fallback GlobalShortcuts (when CGEventTap unavailable) ────────
 
 function registerFallbackShortcuts() {
   globalShortcut.unregisterAll();
-
-  const fallbacks = ['CommandOrControl+Shift+R', 'F6'];
-  for (const shortcut of fallbacks) {
+  for (const s of ['CommandOrControl+Shift+R', 'F6']) {
     try {
-      globalShortcut.register(shortcut, () => {
+      globalShortcut.register(s, () => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('global:hotkey', 'toggle-recording');
           if (mainWindow.isMinimized()) mainWindow.restore();
@@ -124,88 +100,41 @@ function registerFallbackShortcuts() {
   }
 }
 
-// ─── IPC: Renderer tells main about recording state ────────────────
-
-ipcMain.handle('recording:state', (_, state) => {
-  isRecording = state === 'recording';
-});
-
-// ─── IPC: Custom shortcuts ──────────────────────────────────────────
+ipcMain.handle('recording:state', (_, s) => { isRecording = s === 'recording'; });
+ipcMain.handle('transcription:insert', async (_, t) => { if (t) try { await insertTextAtCursor(t); } catch(e) { console.warn('insert failed:', e.message); } });
+ipcMain.handle('transcription:show', async () => { if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); } });
 
 let registeredCustom = null;
-
-ipcMain.handle('shortcut:register', (_, shortcut) => {
-  if (registeredCustom) {
-    try { globalShortcut.unregister(registeredCustom); } catch {}
-  }
+ipcMain.handle('shortcut:register', (_, s) => {
+  if (registeredCustom) try { globalShortcut.unregister(registeredCustom); } catch {}
   registeredCustom = null;
-  if (shortcut) {
+  if (s) {
     try {
-      globalShortcut.register(shortcut, () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('global:hotkey', 'toggle-recording');
-          if (mainWindow.isMinimized()) mainWindow.restore();
-          mainWindow.focus();
-        }
+      globalShortcut.register(s, () => {
+        if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('global:hotkey', 'toggle-recording'); mainWindow.show(); mainWindow.focus(); }
       });
-      registeredCustom = shortcut;
-      return true;
+      registeredCustom = s; return true;
     } catch { return false; }
   }
   return true;
 });
+ipcMain.handle('shortcut:unregisterAll', () => { globalShortcut.unregisterAll(); registerFallbackShortcuts(); registeredCustom = null; return true; });
+ipcMain.handle('helper:restart', () => { startHotkeyHelper(); return true; });
 
-ipcMain.handle('shortcut:unregisterAll', () => {
-  globalShortcut.unregisterAll();
-  registerFallbackShortcuts();
-  registeredCustom = null;
-  return true;
-});
-
-ipcMain.handle('helper:restart', () => {
-  startHotkeyHelper();
-  return true;
-});
-
-// ─── App Lifecycle ──────────────────────────────────────────────────
-
-app.whenReady().then(() => {
-  createWindow();
-  startHotkeyHelper();
-  registerFallbackShortcuts();
-});
-
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
-  if (hotkeyHelper) { hotkeyHelper.kill(); hotkeyHelper = null; }
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
-
-// ─── Create Window ──────────────────────────────────────────────────
+app.whenReady().then(() => { createWindow(); startHotkeyHelper(); registerFallbackShortcuts(); });
+app.on('will-quit', () => { globalShortcut.unregisterAll(); if (hotkeyHelper) { hotkeyHelper.kill(); hotkeyHelper = null; } });
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); else if (mainWindow) { mainWindow.show(); mainWindow.focus(); } });
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1100,
-    height: 750,
-    minWidth: 850,
-    minHeight: 600,
-    title: 'NoMoreType',
-    backgroundColor: '#0e0e0e',
+    width: 1100, height: 750, minWidth: 850, minHeight: 600,
+    title: 'NoMoreType', backgroundColor: '#0e0e0e', show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
+      contextIsolation: true, nodeIntegration: false, sandbox: false,
     },
   });
-
   mainWindow.loadFile(
     app.isPackaged
       ? path.join(process.resourcesPath, 'web-app', 'index.html')
@@ -213,58 +142,18 @@ function createWindow() {
   );
 }
 
-// ─── File Dialog ────────────────────────────────────────────────────
-
 ipcMain.handle('dialog:openFile', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    filters: [{ name: 'Audio & Video', extensions: ['mp3', 'm4a', 'wav', 'flac', 'ogg', 'mp4', 'webm', 'mov', 'aac', 'wma'] }],
-  });
-  if (result.canceled) return null;
-  const fp = result.filePaths[0];
-  const stat = fs.statSync(fp);
-  return { path: fp, name: path.basename(fp), size: stat.size, ext: path.extname(fp).toLowerCase().replace('.', '') };
+  const r = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'], filters: [{name:'Audio & Video', extensions:['mp3','m4a','wav','flac','ogg','mp4','webm','mov','aac','wma']}] });
+  if (r.canceled) return null;
+  const f = r.filePaths[0], s = fs.statSync(f);
+  return { path: f, name: path.basename(f), size: s.size, ext: path.extname(f).toLowerCase().replace('.','') };
 });
-
-ipcMain.handle('file:readChunk', async (_, filePath, offset, length) => {
-  const fd = fs.openSync(filePath, 'r');
-  const buf = Buffer.alloc(length);
-  const br = fs.readSync(fd, buf, 0, length, offset);
-  fs.closeSync(fd);
-  return buf.slice(0, br).toString('base64');
-});
-
-ipcMain.handle('file:getSize', async (_, filePath) => fs.statSync(filePath).size);
-
-ipcMain.handle('yt-dlp:check', async () => {
-  const candidates = ['/opt/homebrew/bin/yt-dlp', '/usr/local/bin/yt-dlp', 'yt-dlp'];
-  for (const bin of candidates) {
-    try {
-      await new Promise((res, rej) => execFile(bin, ['--version'], { timeout: 5000 }, (e, o) => e ? rej(e) : res(o)));
-      return bin;
-    } catch {}
-  }
-  return null;
-});
-
-ipcMain.handle('yt-dlp:execute', async (_, ...args) => {
-  return new Promise((res, rej) => {
-    exec(args.join(' '), { timeout: 120000, maxBuffer: 50 * 1024 * 1024 }, (e, o, er) => e ? rej(er || e.message) : res(o));
-  });
-});
-
-ipcMain.handle('dialog:saveFile', async (_, defaultName) => {
-  const result = await dialog.showSaveDialog(mainWindow, { defaultPath: defaultName, filters: [{ name: 'Text', extensions: ['txt', 'srt'] }] });
-  if (result.canceled) return null;
-  return result.filePath;
-});
-
-ipcMain.handle('fs:writeFile', async (_, filePath, content) => {
-  fs.writeFileSync(filePath, content, 'utf-8');
-  return true;
-});
-
-ipcMain.handle('shell:showItem', async (_, filePath) => shell.showItemInFolder(filePath));
-
+ipcMain.handle('file:readChunk', async (_, fp, off, len) => { const fd = fs.openSync(fp,'r'); const b = Buffer.alloc(len); const br = fs.readSync(fd,b,0,len,off); fs.closeSync(fd); return b.slice(0,br).toString('base64'); });
+ipcMain.handle('file:getSize', async (_, fp) => fs.statSync(fp).size);
+ipcMain.handle('yt-dlp:check', async () => { for (const b of ['/opt/homebrew/bin/yt-dlp','/usr/local/bin/yt-dlp','yt-dlp']) { try { await new Promise((res,rej) => execFile(b,['--version'],{timeout:5000},(e,o) => e?rej(e):res(o))); return b; } catch {} } return null; });
+ipcMain.handle('yt-dlp:execute', async (_, ...a) => new Promise((res,rej) => exec(a.join(' '),{timeout:120000,maxBuffer:50*1024*1024},(e,o,er) => e?rej(er||e.message):res(o))));
+ipcMain.handle('dialog:saveFile', async (_, n) => { const r = await dialog.showSaveDialog(mainWindow,{defaultPath:n,filters:[{name:'Text',extensions:['txt','srt']}]}); return r.canceled ? null : r.filePath; });
+ipcMain.handle('fs:writeFile', async (_, fp, c) => { fs.writeFileSync(fp,c,'utf-8'); return true; });
+ipcMain.handle('shell:showItem', async (_, fp) => shell.showItemInFolder(fp));
 ipcMain.handle('app:platform', () => process.platform);
 ipcMain.handle('app:userDataPath', () => app.getPath('userData'));

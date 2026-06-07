@@ -1,68 +1,82 @@
 // NoMoreType — Hotkey Helper
-// macOS CGEventTap daemon for detecting Right Control double-tap / single-tap.
-// Spawned by Electron main process as a subprocess.
-// Communicates via stdout JSON lines: {"event":"double-tap"} or {"event":"single-tap"}
+// macOS CGEventTap daemon for detecting Left Control key:
+//   - Double-tap Left Control → start recording
+//   - Single-tap Left Control (while recording) → stop recording
+// Spawned by Electron as subprocess, communicates via stdout JSON.
+//
+// key codes: Left Ctrl=0x3B, Right Ctrl=0x3E
 
 import Cocoa
 import Foundation
 
-// Right Control key code on macOS
-let RIGHT_CONTROL_KEY_CODE: UInt16 = 0x3B
-// Double-tap threshold (ms)
-let DOUBLE_TAP_THRESHOLD: TimeInterval = 0.4
-// For tracking press states
-var lastPressTime: Date?
-var isRightCtrlDown = false
+let RIGHT_CTRL: UInt16 = 0x3B
+let DOUBLE_TAP_WINDOW: TimeInterval = 0.4 // seconds
 
-// Callback function for CGEventTap
+var firstPressTime: Date?
+var pendingSingleTap: DispatchWorkItem?
+
+// ─── CGEventTap callback ──────────────────────────────────────────
+
 let eventCallback: CGEventTapCallBack = { (proxy, type, event, refcon) in
-    let now = Date()
-    
     if type == .flagsChanged {
+        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        guard keyCode == RIGHT_CTRL else {
+            return Unmanaged.passUnretained(event) // pass through other keys
+        }
+
         let flags = event.flags
-        let isDown = flags.contains(.maskControl) && !flags.contains(.maskShift) && !flags.contains(.maskCommand) && !flags.contains(.maskAlternate)
-        
-        // Check if it's specifically Right Control
-        // When Right Ctrl is pressed, the control flag is set but the key code is 0x3B
-        // We detect this by checking: control flag is set AND no command/alt/shift
-        
-        if isDown && !isRightCtrlDown {
-            // Press detected
-            isRightCtrlDown = true
-            
-            if let last = lastPressTime {
-                let interval = now.timeIntervalSince(last)
-                if interval < DOUBLE_TAP_THRESHOLD {
-                    // Double-tap!
-                    printJSON(["event": "double-tap"])
-                    lastPressTime = nil
-                    isRightCtrlDown = false
-                    return nil // swallow the event
+        let isDown = flags.contains(.maskControl)
+        let now = Date()
+
+        if isDown {
+            // ── PRESSED ──
+            if let first = firstPressTime {
+                let elapsed = now.timeIntervalSince(first)
+                if elapsed < DOUBLE_TAP_WINDOW {
+                    // Second press within window → DOUBLE TAP!
+                    pendingSingleTap?.cancel()
+                    pendingSingleTap = nil
+                    firstPressTime = nil
+                    log(["event": "double-tap"])
+                    return nil // swallow
                 }
             }
-            lastPressTime = now
-            
-        } else if !isDown && isRightCtrlDown {
-            // Release detected
-            isRightCtrlDown = false
-            
-            // If we didn't already handle it as a double-tap, treat as single tap
-            if let last = lastPressTime {
-                let interval = now.timeIntervalSince(last)
-                if interval > 0.01 && interval < DOUBLE_TAP_THRESHOLD {
-                    // It's been held briefly - single tap
-                    printJSON(["event": "single-tap"])
-                    lastPressTime = nil
+
+            // First press (or too slow for double-tap)
+            pendingSingleTap?.cancel()
+            firstPressTime = now
+
+        } else {
+            // ── RELEASED ──
+            guard let first = firstPressTime else {
+                return nil
+            }
+
+            let elapsed = now.timeIntervalSince(first)
+
+            if elapsed > DOUBLE_TAP_WINDOW {
+                // Held too long for double-tap → single tap
+                firstPressTime = nil
+                log(["event": "single-tap"])
+            } else {
+                // Released quickly — wait for possible second press
+                let task = DispatchWorkItem {
+                    if firstPressTime != nil {
+                        firstPressTime = nil
+                        log(["event": "single-tap"])
+                    }
                 }
+                pendingSingleTap = task
+                DispatchQueue.main.asyncAfter(deadline: .now() + DOUBLE_TAP_WINDOW, execute: task)
             }
         }
     }
-    
-    // Don't swallow the event — pass through
-    return nil
+    return Unmanaged.passUnretained(event)
 }
 
-func printJSON(_ dict: [String: String]) {
+// ─── JSON output ──────────────────────────────────────────────────
+
+func log(_ dict: [String: String]) {
     if let data = try? JSONSerialization.data(withJSONObject: dict, options: []),
        let str = String(data: data, encoding: .utf8) {
         print(str)
@@ -70,52 +84,47 @@ func printJSON(_ dict: [String: String]) {
     }
 }
 
-func main() {
-    // Check accessibility permission
-    let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true]
-    let trusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
-    
-    if !trusted {
-        printJSON(["error": "Accessibility permission required"])
-        // Keep trying — user may grant permission
-        DispatchQueue.global().async {
-            while !AXIsProcessTrusted() {
-                sleep(1)
-            }
-            DispatchQueue.main.async {
-                printJSON(["event": "permission-granted"])
-                startEventTap()
-            }
-        }
-        // Run the run loop so we can detect when permission is granted
-        RunLoop.current.run()
-        return
-    }
-    
-    startEventTap()
-    RunLoop.current.run()
-}
+// ─── Event Tap Setup ──────────────────────────────────────────────
 
-func startEventTap() {
-    let eventMask = (1 << CGEventType.flagsChanged.rawValue)
-    
+func startTap() {
+    let mask = (1 << CGEventType.flagsChanged.rawValue)
     guard let tap = CGEvent.tapCreate(
         tap: .cgSessionEventTap,
         place: .headInsertEventTap,
         options: .defaultTap,
-        eventsOfInterest: CGEventMask(eventMask),
+        eventsOfInterest: CGEventMask(mask),
         callback: eventCallback,
         userInfo: nil
     ) else {
-        printJSON(["error": "Failed to create event tap"])
+        log(["error": "Failed to create event tap"])
         return
     }
-    
-    let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+    let src = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), src, .commonModes)
     CGEvent.tapEnable(tap: tap, enable: true)
-    
-    printJSON(["event": "started"])
+    log(["event": "started"])
+}
+
+// ─── Main ─────────────────────────────────────────────────────────
+
+func main() {
+    // Warm up accessibility — prompts user if not granted
+    let opts = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
+    if !AXIsProcessTrustedWithOptions(opts) {
+        log(["error": "Accessibility permission required"])
+        // Poll until granted
+        DispatchQueue.global().async {
+            while !AXIsProcessTrusted() { Thread.sleep(forTimeInterval: 1) }
+            DispatchQueue.main.async {
+                log(["event": "permission-granted"])
+                startTap()
+            }
+        }
+        RunLoop.current.run()
+        return
+    }
+    startTap()
+    RunLoop.current.run()
 }
 
 main()

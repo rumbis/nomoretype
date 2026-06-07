@@ -32,4 +32,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   unregisterAllShortcuts: () => ipcRenderer.invoke('shortcut:unregisterAll'),
   setRecordingState: (state) => ipcRenderer.invoke('recording:state', state),
   restartHelper: () => ipcRenderer.invoke('helper:restart'),
+  // Auto-insert transcribed text at cursor in previous app
+  insertTranscription: (text) => ipcRenderer.invoke('transcription:insert', text),
+  showTranscription: (text) => ipcRenderer.invoke('transcription:show', text),
 });
