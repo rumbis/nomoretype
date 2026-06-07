@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+*.swp
+*.swo
+
+# Build artifacts
+.build/
+.build-*
+TranscriptionApp.app/
+
+# Dependencies
+electron-app/node_modules/
+capacitor-app/node_modules/
+
+# Build output
+electron-app/dist/
+
+# IDE
+.idea/
+.vscode/
+*.xcuserdata
+xcuserdata/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*

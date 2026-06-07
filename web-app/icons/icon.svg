@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0e0e0e"/>
+      <stop offset="100%" style="stop-color:#1a1a1a"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0b90b"/>
+      <stop offset="100%" style="stop-color:#ffd633"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0b90b;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#f0b90b;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <rect width="1024" height="1024" rx="200" fill="url(#bg)"/>
+
+  <!-- Outer ring -->
+  <circle cx="512" cy="512" r="380" fill="none" stroke="url(#ring)" stroke-width="6" opacity="0.15"/>
+
+  <!-- Inner ring -->
+  <circle cx="512" cy="512" r="240" fill="none" stroke="url(#ring)" stroke-width="3" opacity="0.25"/>
+
+  <!-- Microphone body -->
+  <rect x="450" y="310" width="124" height="200" rx="62" fill="url(#ring)" opacity="0.95"/>
+
+  <!-- Microphone bar (top) -->
+  <rect x="476" y="280" width="72" height="40" rx="20" fill="#f0b90b" opacity="0.7"/>
+
+  <!-- Microphone arc (bottom) -->
+  <path d="M 410 530 Q 512 680 614 530" fill="none" stroke="url(#ring)" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Sound wave bars - left -->
+  <rect x="340" y="440" width="12" height="80" rx="6" fill="#f0b90b" opacity="0.3">
+    <animate attributeName="height" values="80;120;80" dur="1.2s" repeatCount="indefinite"/>
+    <animate attributeName="y" values="440;420;440" dur="1.2s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="370" y="420" width="12" height="120" rx="6" fill="#f0b90b" opacity="0.5">
+    <animate attributeName="height" values="120;160;120" dur="1.0s" repeatCount="indefinite"/>
+    <animate attributeName="y" values="420;400;420" dur="1.0s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Sound wave bars - right -->
+  <rect x="642" y="440" width="12" height="80" rx="6" fill="#f0b90b" opacity="0.3">
+    <animate attributeName="height" values="80;120;80" dur="1.2s" repeatCount="indefinite"/>
+    <animate attributeName="y" values="440;420;440" dur="1.2s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="672" y="420" width="12" height="120" rx="6" fill="#f0b90b" opacity="0.5">
+    <animate attributeName="height" values="120;160;120" dur="1.0s" repeatCount="indefinite"/>
+    <animate attributeName="y" values="420;400;420" dur="1.0s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Dots at bottom -->
+  <circle cx="512" cy="720" r="6" fill="#f0b90b" opacity="0.4"/>
+  <circle cx="482" cy="740" r="4" fill="#f0b90b" opacity="0.3"/>
+  <circle cx="542" cy="740" r="4" fill="#f0b90b" opacity="0.3"/>
+
+  <!-- Label "N" monogram -->
+  <text x="512" y="790" font-family="Inter, -apple-system, sans-serif" font-size="40" font-weight="700" fill="#f0b90b" text-anchor="middle" opacity="0.6" letter-spacing="4">NMT</text>
+</svg>

@@ -1,0 +1,63 @@
+{
+  "name": "nomoretype",
+  "version": "1.0.0",
+  "description": "Cross-platform transcription app powered by Groq Whisper API — NoMoreType. Transcribe files, mic, YouTube subtitles, polish & translate.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac --config build.config.js",
+    "build:win": "electron-builder --win --config build.config.js",
+    "build:linux": "electron-builder --linux --config build.config.js",
+    "build:all": "electron-builder --mac --win --linux --config build.config.js"
+  },
+  "keywords": [
+    "transcription",
+    "whisper",
+    "groq",
+    "speech-to-text",
+    "nomoretype",
+    "electron",
+    "cross-platform"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/influro/nomoretype"
+  },
+  "author": {
+    "name": "Influro Academy",
+    "email": "hello@influro.com"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.influro.nomoretype",
+    "productName": "NoMoreType",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "../web-app/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": ["dmg", "zip"],
+      "icon": "../web-app/icons/icon-512.svg",
+      "entitlements": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "../web-app/icons/icon-512.svg"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Office",
+      "icon": "../web-app/icons/icon-512.svg"
+    }
+  }
+}

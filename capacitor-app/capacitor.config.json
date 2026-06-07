@@ -1,0 +1,39 @@
+{
+  "appId": "com.influro.nomoretype",
+  "appName": "NoMoreType",
+  "webDir": "../web-app",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1000,
+      "backgroundColor": "#0e0e0e",
+      "androidSplashResourceName": "splash"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0e0e0e"
+    },
+    "Filesystem": {
+      "permissions": [
+        {
+          "name": "storage",
+          "description": "Access storage for saving transcriptions"
+        }
+      ]
+    }
+  },
+  "ios": {
+    "contentInset": "always",
+    "preferredContentMode": "mobile",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0e0e0e"
+  }
+}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#1a1a1a"/>
+  <circle cx="96" cy="82" r="32" fill="#f0b90b" opacity="0.15"/>
+  <text x="96" y="98" font-size="56" text-anchor="middle" fill="#f0b90b" font-family="sans-serif">🎤</text>
+  <rect x="68" y="124" width="56" height="6" rx="3" fill="#f0b90b" opacity="0.6"/>
+  <rect x="76" y="134" width="40" height="4" rx="2" fill="#f0b90b" opacity="0.4"/>
+</svg>

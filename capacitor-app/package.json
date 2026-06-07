@@ -1,0 +1,29 @@
+{
+  "name": "transcription-app-mobile",
+  "version": "1.0.0",
+  "description": "NoMoreType for Android & iOS — powered by Capacitor",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx cap serve",
+    "build": "npx cap sync",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android",
+    "add:ios": "npx cap add ios",
+    "add:android": "npx cap add android",
+    "build:ios": "npx cap sync ios && npx cap copy ios",
+    "build:android": "npx cap sync android && npx cap copy android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/share": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/android": "^7.0.0"
+  },
+  "author": "Influro Academy",
+  "license": "MIT"
+}
