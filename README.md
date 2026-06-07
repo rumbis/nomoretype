@@ -130,4 +130,4 @@ The `platform.js` file detects the runtime and provides a unified API for:
 
 ## 📄 License
 
-MIT — free to use, modify, and distribute. Built by [Influro Academy](https://influro.com).
+MIT — free to use, modify, and distribute. Built by [CodeitLab](https://codeitlab.com).

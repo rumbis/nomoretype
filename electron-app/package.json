@@ -22,11 +22,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/influro/nomoretype"
+    "url": "https://github.com/rumbis/nomoretype"
   },
   "author": {
-    "name": "Influro Academy",
-    "email": "hello@influro.com"
+    "name": "CodeitLab",
+    "email": "hello@codeitlab.com"
   },
   "devDependencies": {
     "electron": "^35.0.0",
