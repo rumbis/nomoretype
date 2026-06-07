@@ -23,4 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Platform
   platform: () => ipcRenderer.invoke('app:platform'),
   userDataPath: () => ipcRenderer.invoke('app:userDataPath'),
+
+  // ─── Global hotkeys ───────────────────────────────────────────────
+  onGlobalHotkey: (callback) => {
+    ipcRenderer.on('global:hotkey', (_event, action) => callback(action));
+  },
+  registerCustomShortcut: (shortcut) => ipcRenderer.invoke('shortcut:register', shortcut),
+  unregisterAllShortcuts: () => ipcRenderer.invoke('shortcut:unregisterAll'),
 });

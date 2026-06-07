@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initHistoryTab();
   initSettingsTab();
   initPWA();
+  initKeyboardShortcuts();
+  initGlobalHotkeys();
 
   startYouTubeService();
   if (window._loadSettings) window._loadSettings();
@@ -29,26 +31,100 @@ function initNavigation() {
   const tabs = document.querySelectorAll('.nav-tab');
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      const tabName = tab.dataset.tab;
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      const target = document.getElementById(`tab-${tabName}`);
-      if (target) target.classList.add('active');
-      if (tabName === 'history' && window._refreshHistory) window._refreshHistory();
+      switchTab(tab.dataset.tab);
     });
   });
+}
+
+function switchTab(tabName) {
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  const activeTab = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
+  if (activeTab) activeTab.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const target = document.getElementById(`tab-${tabName}`);
+  if (target) target.classList.add('active');
+  if (tabName === 'history' && window._refreshHistory) window._refreshHistory();
+}
+
+// ─── Keyboard Shortcuts (in-app) ───────────────────────────────────
+
+function initKeyboardShortcuts() {
+  const tabKeys = ['file', 'mic', 'youtube', 'polish', 'history', 'settings'];
+  const isMac = navigator.platform?.includes('Mac') || window.Platform?.isElectron;
+
+  document.addEventListener('keydown', (e) => {
+    // Cmd/Ctrl + 1-6 → switch tabs
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (mod && e.key >= '1' && e.key <= '6') {
+      e.preventDefault();
+      const idx = parseInt(e.key) - 1;
+      if (idx < tabKeys.length) switchTab(tabKeys[idx]);
+      return;
+    }
+
+    // Escape → close modals
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('historyModal');
+      if (modal && modal.style.display === 'block') {
+        modal.style.display = 'none';
+      }
+    }
+  });
+}
+
+// ─── Global Hotkeys (Electron only) ────────────────────────────────
+
+function initGlobalHotkeys() {
+  // Register Electron global shortcut listener
+  if (window.electronAPI?.onGlobalHotkey) {
+    window.electronAPI.onGlobalHotkey((action) => {
+      if (action === 'toggle-recording') {
+        toggleMicRecording();
+      }
+    });
+  }
+
+  // Media session support (web/mobile — e.g. keyboard media keys)
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.setActionHandler('play', () => toggleMicRecording());
+      navigator.mediaSession.setActionHandler('pause', () => toggleMicRecording());
+    } catch {}
+  }
+}
+
+// ─── Toggle Mic Recording (called from hotkey or media key) ────────
+
+function toggleMicRecording() {
+  const recordBtn = document.getElementById('micRecordBtn');
+  const micStatus = document.getElementById('micStatus');
+  if (!recordBtn) {
+    // Switch to mic tab first
+    switchTab('mic');
+    // Small delay for UI to render, then click
+    setTimeout(() => {
+      const btn = document.getElementById('micRecordBtn');
+      if (btn) btn.click();
+    }, 200);
+    return;
+  }
+
+  const isRecording = micStatus?.textContent === 'Recording…' || recordBtn.textContent.includes('Stop');
+  if (isRecording) {
+    recordBtn.click(); // stop
+  } else {
+    recordBtn.click(); // start
+  }
 }
 
 // ─── PWA / Install Prompt ──────────────────────────────────────────
 
 function initPWA() {
-  // Register service worker for PWA
   if ('serviceWorker' in navigator && !window.Platform.isElectron) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
-  // Install prompt
   let deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -139,7 +215,6 @@ function initFileTab() {
     transcribeBtn.disabled = false;
   }
 
-  // Drag & drop
   dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
   dropZone.addEventListener('drop', async (e) => {
@@ -213,7 +288,6 @@ function initFileTab() {
   copyBtn.addEventListener('click', () => {
     window.Platform.copyToClipboard(resultText.textContent).then(() => showToast('Copied!'));
   });
-
   saveBtn.addEventListener('click', async () => {
     const ext = output.value === 'srt' ? 'srt' : 'txt';
     const defaultName = (selectedFile ? selectedFile.name.replace(/\.[^.]+$/, '') : 'transcript') + `_transcript.${ext}`;
@@ -358,24 +432,17 @@ function initYouTubeTab() {
   const copyBtn = $('ytCopyBtn');
   const saveBtn = $('ytSaveBtn');
 
-  // Platform notice
-  const platformNotice = document.createElement('div');
-  platformNotice.className = 'platform-notice';
-
   getSubsBtn.addEventListener('click', async () => {
     const url = urlInput.value.trim();
     if (!url) { showToast('Please enter a YouTube URL', 'warning'); return; }
-
     if (!window.youTubeService.isAvailable()) {
-      showToast('yt-dlp not detected. YouTube features require yt-dlp (desktop only).', 'warning', 5000);
+      showToast('yt-dlp not detected. YouTube requires yt-dlp (desktop only).', 'warning', 5000);
       return;
     }
-
     progressSection.style.display = 'block';
     resultSection.style.display = 'none';
     getSubsBtn.disabled = true;
     transcribeBtn.disabled = true;
-
     try {
       progressText.textContent = 'Fetching subtitles…';
       progressFill.style.width = '30%';
@@ -403,15 +470,13 @@ function initYouTubeTab() {
     const url = urlInput.value.trim();
     if (!url) { showToast('Please enter a YouTube URL', 'warning'); return; }
     if (!window.youTubeService.isAvailable()) {
-      showToast('yt-dlp not detected. YouTube features require yt-dlp (desktop only).', 'warning', 5000);
+      showToast('yt-dlp not detected. YouTube requires yt-dlp (desktop only).', 'warning', 5000);
       return;
     }
-
     progressSection.style.display = 'block';
     resultSection.style.display = 'none';
     getSubsBtn.disabled = true;
     transcribeBtn.disabled = true;
-
     try {
       progressText.textContent = 'Downloading audio…';
       progressFill.style.width = '10%';
@@ -478,7 +543,6 @@ function initPolishTab() {
     if (!text) { showToast('Please enter text to process', 'warning'); return; }
     processBtn.disabled = true;
     resultSection.style.display = 'none';
-
     try {
       const result = await window.llmService.process(text, mode.value, targetLang.value);
       resultText.textContent = result;
@@ -535,7 +599,6 @@ function initHistoryTab() {
         </div>
       </div>`;
     }).join('');
-
     list.querySelectorAll('.history-item').forEach(el => {
       el.addEventListener('click', () => {
         const item = window.historyStorage.getAll().find(i => i.id === el.dataset.id);
@@ -549,7 +612,6 @@ function initHistoryTab() {
   }
 
   render();
-
   modalClose.addEventListener('click', () => { modal.style.display = 'none'; });
   modal.addEventListener('click', (e) => {
     if (e.target.classList.contains('modal-backdrop')) modal.style.display = 'none';
@@ -557,26 +619,19 @@ function initHistoryTab() {
   modalCopy.addEventListener('click', () => {
     window.Platform.copyToClipboard(modalText.textContent).then(() => showToast('Copied!'));
   });
-
   clearBtn.addEventListener('click', () => {
-    if (confirm('Clear all history?')) {
-      window.historyStorage.clear();
-      render();
-      showToast('History cleared');
-    }
+    if (confirm('Clear all history?')) { window.historyStorage.clear(); render(); showToast('History cleared'); }
   });
-
   exportBtn.addEventListener('click', async () => {
     const data = window.historyStorage.export();
     const saved = await window.Platform.saveFile(data, 'transcription_history.json', 'application/json');
     if (saved) showToast('Exported!');
   });
-
   window._refreshHistory = render;
 }
 
 // ─── ═══════════════════════════════════════════════════════════════
-//   SETTINGS TAB
+//   SETTINGS TAB (updated with shortcut display)
 // ─── ═══════════════════════════════════════════════════════════════
 
 function initSettingsTab() {

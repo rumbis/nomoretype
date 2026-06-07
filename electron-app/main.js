@@ -1,8 +1,7 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut } = require('electron');
 const path = require('path');
 const { execFile, exec } = require('child_process');
 const fs = require('fs');
-const os = require('os');
 
 let mainWindow = null;
 
@@ -22,10 +21,81 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadFile(path.join(__dirname, '..', 'web-app', 'index.html'));
+  mainWindow.loadFile(
+    app.isPackaged
+      ? path.join(process.resourcesPath, 'web-app', 'index.html')
+      : path.join(__dirname, '..', 'web-app', 'index.html')
+  );
 }
 
-app.whenReady().then(createWindow);
+// ─── Global Hotkeys ─────────────────────────────────────────────────
+
+function registerGlobalShortcuts() {
+  globalShortcut.unregisterAll();
+
+  // Toggle mic recording: CmdOrCtrl+Shift+R or F6
+  const shortcuts = ['CommandOrControl+Shift+R', 'F6'];
+  for (const shortcut of shortcuts) {
+    try {
+      globalShortcut.register(shortcut, () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('global:hotkey', 'toggle-recording');
+          // Show the window if minimized/hidden
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.focus();
+        }
+      });
+    } catch (e) {
+      console.warn(`Failed to register ${shortcut}:`, e.message);
+    }
+  }
+}
+
+// Also register from settings IPC
+let registeredCustom = null;
+
+ipcMain.handle('shortcut:register', (_, shortcut) => {
+  // Unregister old custom shortcut
+  if (registeredCustom) {
+    try { globalShortcut.unregister(registeredCustom); } catch {}
+  }
+  registeredCustom = null;
+
+  if (shortcut) {
+    try {
+      globalShortcut.register(shortcut, () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('global:hotkey', 'toggle-recording');
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.focus();
+        }
+      });
+      registeredCustom = shortcut;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+});
+
+ipcMain.handle('shortcut:unregisterAll', () => {
+  globalShortcut.unregisterAll();
+  registerGlobalShortcuts(); // re-register defaults
+  registeredCustom = null;
+  return true;
+});
+
+// ─── App Lifecycle ──────────────────────────────────────────────────
+
+app.whenReady().then(() => {
+  createWindow();
+  registerGlobalShortcuts();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

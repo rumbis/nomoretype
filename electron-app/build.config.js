@@ -10,7 +10,13 @@ module.exports = {
     'main.js',
     'preload.js',
     'package.json',
-    '../web-app/**/*',
+  ],
+  extraResources: [
+    {
+      from: '../web-app',
+      to: 'web-app',
+      filter: ['**/*'],
+    },
   ],
   mac: {
     category: 'public.app-category.productivity',
@@ -28,7 +34,7 @@ module.exports = {
       { target: 'nsis', arch: ['x64'] },
       { target: 'portable', arch: ['x64'] },
     ],
-    icon: 'build/icon.png',
+    icon: '../web-app/icons/icon.svg',
   },
   linux: {
     target: [
@@ -36,7 +42,7 @@ module.exports = {
       { target: 'deb', arch: ['x64'] },
     ],
     category: 'Office',
-    icon: 'build/icon.png',
+    icon: '../web-app/icons/icon.svg',
   },
   nsis: {
     oneClick: false,

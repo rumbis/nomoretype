@@ -212,6 +212,7 @@ window.Platform = (() => {
     getUserDataPath,
     copyToClipboard,
     isValidYoutubeUrl,
+    onGlobalHotkey: null, // set by app.js if Electron
     log,
   };
 })();
